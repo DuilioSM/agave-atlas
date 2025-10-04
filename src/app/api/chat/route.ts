@@ -4,12 +4,34 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
-import { createRetrievalChain } from 'langchain/chains/retrieval';
+import { createRetrievalChain } from "langchain/chains/retrieval";
+import { createHistoryAwareRetriever } from "langchain/chains/history_aware_retriever";
+import { AIMessage, HumanMessage } from "@langchain/core/messages";
+import { MessagesPlaceholder } from "@langchain/core/prompts";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { message } = body;
+    const { messages } = body;
+
+    const lastMessage = messages[messages.length - 1];
+
+    const shortResponses: { [key: string]: string } = {
+      "ok": "¡De nada! Si tienes más preguntas, no dudes en consultarme.",
+      "si": "Perfecto. ¿En qué más puedo ayudarte?",
+      "no": "Entendido. Si cambias de opinión, aquí estaré para ayudarte.",
+      "gracias": "¡De nada! Ha sido un placer ayudarte. ¿Necesitas algo más?",
+      "de nada": "¡A ti! ¿Hay algo más en lo que pueda asistirte?",
+    };
+
+    const lowerCaseMessage = lastMessage.content.toLowerCase().trim();
+
+    if (shortResponses[lowerCaseMessage]) {
+      return Response.json({
+        message: shortResponses[lowerCaseMessage],
+        sources: [],
+      });
+    }
 
     // Inicializar Pinecone
     const pinecone = new Pinecone({
@@ -19,21 +41,21 @@ export async function POST(request: Request) {
     const indexName = process.env.PINECONE_INDEX || 'agave-atlas';
     const index = pinecone.Index(indexName);
 
-    // Configurar embeddings (mismo modelo y dimensión que usamos para indexar)
+    // Configurar embeddings
     const embeddings = new OpenAIEmbeddings({
       openAIApiKey: process.env.OPENAI_KEY!,
       modelName: 'text-embedding-3-small',
       dimensions: 512,
     });
 
-    // Crear vector store desde el índice existente
+    // Crear vector store
     const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
       pineconeIndex: index,
     });
 
     // Crear retriever
     const retriever = vectorStore.asRetriever({
-      k: 4, // Número de documentos relevantes a recuperar
+      k: 4,
     });
 
     // Configurar LLM
@@ -43,41 +65,66 @@ export async function POST(request: Request) {
       temperature: 0.7,
     });
 
-    // Crear prompt template
-    const prompt = ChatPromptTemplate.fromTemplate(`
-Eres un asistente de investigación espacial y biología. Responde la pregunta del usuario de forma breve y concisa, basándote únicamente en el contexto proporcionado de artículos científicos.
+    // History-aware retriever prompt
+    const historyAwarePrompt = ChatPromptTemplate.fromMessages([
+      new MessagesPlaceholder("chat_history"),
+      ["user", "{input}"],
+      [
+        "user",
+        "Given the above conversation, generate a search query to look up in order to get information relevant to the conversation",
+      ],
+    ]);
 
-Contexto de artículos científicos:
-{context}
-
-Pregunta: {input}
-
-Formatea toda tu respuesta como un blockquote de markdown. Cita los artículos cuando sea relevante (usando el título del artículo). Utiliza **markdown** para resaltar las palabras y conceptos clave en tu respuesta.
-`);
-
-    // Crear chain de documentos
-    const documentChain = await createStuffDocumentsChain({
+    const historyAwareRetrieverChain = await createHistoryAwareRetriever({
       llm,
-      prompt,
+      retriever,
+      rephrasePrompt: historyAwarePrompt,
     });
 
-    // Crear retrieval chain
-    const retrievalChain = await createRetrievalChain({
-      combineDocsChain: documentChain,
-      retriever,
+    // Prompt for the final response
+    const historyAwareRetrievalPrompt = ChatPromptTemplate.fromMessages([
+      [
+        "system",
+        "Eres un asistente de investigación espacial y biología. Responde a la consulta del usuario de forma breve y concisa, basándote únicamente en el contexto proporcionado de artículos científicos.\n\nContexto de artículos científicos:\n{context}\n\nFormatea toda tu respuesta como un blockquote de markdown. Cita los artículos cuando sea relevante (usando el título del artículo). Utiliza **markdown** para resaltar las palabras y conceptos clave en tu respuesta.",
+      ],
+      new MessagesPlaceholder("chat_history"),
+      ["user", "{input}"],
+    ]);
+
+    const historyAwareCombineDocsChain = await createStuffDocumentsChain({
+      llm,
+      prompt: historyAwareRetrievalPrompt,
+    });
+
+    const conversationalRetrievalChain = await createRetrievalChain({
+      retriever: historyAwareRetrieverChain,
+      combineDocsChain: historyAwareCombineDocsChain,
+    });
+
+    const chat_history = messages.slice(0, -1).map((m: any) => {
+        return m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content);
     });
 
     // Ejecutar query
-    const result = await retrievalChain.invoke({
-      input: message,
+    const result = await conversationalRetrievalChain.invoke({
+      chat_history: chat_history,
+      input: lastMessage.content,
     });
 
-    return Response.json({
-      message: result.answer,
-      sources: result.context?.map((doc: any) => ({
+    const sources = result.context?.map((doc: any) => ({
         title: doc.metadata.title,
-        link: doc.metadata.source,
-      })) || [],
+        link: doc.metadata.link,
+        authors: doc.metadata.authors || [],
+        authors: doc.metadata.authors || [],
+      })) || [];
+
+    let enhancedAnswer = result.answer;
+
+    enhancedAnswer += `\n\nHa sido un placer ayudarte con tu consulta. Si tienes más preguntas o necesitas más información, no dudes en preguntar. ¿Hay algo más en lo que pueda asistirte?`;
+
+    return Response.json({
+      message: enhancedAnswer,
+      sources: sources,
     });
   } catch (error) {
     console.error("Error:", error);

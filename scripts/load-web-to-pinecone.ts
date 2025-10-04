@@ -7,6 +7,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parse } from 'csv-parse/sync';
 import * as dotenv from 'dotenv';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 dotenv.config();
 
@@ -82,12 +84,32 @@ async function loadWebToPinecone() {
           continue;
         }
 
+        // --- New logic to extract authors ---
+        const pageResponse = await axios.get(record.Link);
+        const $ = cheerio.load(pageResponse.data);
+
+        let authors: string[] = [];
+        const metaAuthor = $('meta[name="author"]').attr('content');
+        if (metaAuthor) {
+          authors = metaAuthor.split(',').map((a: string) => a.trim());
+        } else {
+            const authorElements = $('.author, .byline, [rel="author"]');
+            if (authorElements.length > 0) {
+                authorElements.each((i: any, el: any) => {
+                    authors.push($(el).text().trim());
+                });
+            }
+        }
+        // --- End of new logic ---
+
+
         // Agregar metadata
         docs.forEach(doc => {
           doc.metadata = {
             ...doc.metadata,
             title: record.Title,
-            source: record.Link,
+            link: record.Link,
+            authors: authors, // Add authors to metadata
             loadedAt: new Date().toISOString(),
           };
         });
