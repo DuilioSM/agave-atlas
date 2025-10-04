@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -84,7 +85,7 @@ export default function Home() {
                     : "bg-muted"
                 }`}
               >
-                {message.content}
+                <ReactMarkdown>{message.content}</ReactMarkdown>
               </Card>
             </div>
           ))}

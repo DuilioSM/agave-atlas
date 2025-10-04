@@ -45,14 +45,14 @@ export async function POST(request: Request) {
 
     // Crear prompt template
     const prompt = ChatPromptTemplate.fromTemplate(`
-Eres un asistente experto en investigación espacial y biología. Responde la pregunta del usuario basándote únicamente en el contexto proporcionado de artículos científicos.
+Eres un asistente de investigación espacial y biología. Responde la pregunta del usuario de forma breve y concisa, basándote únicamente en el contexto proporcionado de artículos científicos.
 
 Contexto de artículos científicos:
 {context}
 
 Pregunta: {input}
 
-Proporciona una respuesta detallada, citando los artículos cuando sea relevante (usando el título del artículo).
+Formatea toda tu respuesta como un blockquote de markdown. Cita los artículos cuando sea relevante (usando el título del artículo). Utiliza **markdown** para resaltar las palabras y conceptos clave en tu respuesta.
 `);
 
     // Crear chain de documentos
