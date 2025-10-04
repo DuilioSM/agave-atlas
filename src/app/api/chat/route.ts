@@ -1,37 +1,83 @@
+import { OpenAIEmbeddings } from '@langchain/openai';
+import { PineconeStore } from '@langchain/pinecone';
+import { Pinecone } from '@pinecone-database/pinecone';
+import { ChatOpenAI } from '@langchain/openai';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
+import { createRetrievalChain } from 'langchain/chains/retrieval';
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { message } = body;
 
-    const response = await fetch(
-      "https://prod-1-data.ke.pinecone.io/assistant/chat/nasaspace",
-      {
-        method: "POST",
-        headers: {
-          "Api-Key": process.env.PINECONE_API_KEY!,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content: message,
-            },
-          ],
-          stream: false,
-          model: "gpt-4o",
-        }),
-      }
-    );
+    // Inicializar Pinecone
+    const pinecone = new Pinecone({
+      apiKey: process.env.PINECONE_API_KEY!,
+    });
 
-    if (!response.ok) {
-      throw new Error(`Pinecone API error: ${response.statusText}`);
-    }
+    const indexName = process.env.PINECONE_INDEX || 'agave-atlas';
+    const index = pinecone.Index(indexName);
 
-    const data = await response.json();
+    // Configurar embeddings (mismo modelo y dimensión que usamos para indexar)
+    const embeddings = new OpenAIEmbeddings({
+      openAIApiKey: process.env.OPENAI_KEY!,
+      modelName: 'text-embedding-3-small',
+      dimensions: 512,
+    });
+
+    // Crear vector store desde el índice existente
+    const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+      pineconeIndex: index,
+    });
+
+    // Crear retriever
+    const retriever = vectorStore.asRetriever({
+      k: 4, // Número de documentos relevantes a recuperar
+    });
+
+    // Configurar LLM
+    const llm = new ChatOpenAI({
+      openAIApiKey: process.env.OPENAI_KEY!,
+      modelName: 'gpt-4o',
+      temperature: 0.7,
+    });
+
+    // Crear prompt template
+    const prompt = ChatPromptTemplate.fromTemplate(`
+Eres un asistente experto en investigación espacial y biología. Responde la pregunta del usuario basándote únicamente en el contexto proporcionado de artículos científicos.
+
+Contexto de artículos científicos:
+{context}
+
+Pregunta: {input}
+
+Proporciona una respuesta detallada, citando los artículos cuando sea relevante (usando el título del artículo).
+`);
+
+    // Crear chain de documentos
+    const documentChain = await createStuffDocumentsChain({
+      llm,
+      prompt,
+    });
+
+    // Crear retrieval chain
+    const retrievalChain = await createRetrievalChain({
+      combineDocsChain: documentChain,
+      retriever,
+    });
+
+    // Ejecutar query
+    const result = await retrievalChain.invoke({
+      input: message,
+    });
 
     return Response.json({
-      message: data.message?.content || "No response from assistant"
+      message: result.answer,
+      sources: result.context?.map((doc: any) => ({
+        title: doc.metadata.title,
+        link: doc.metadata.source,
+      })) || [],
     });
   } catch (error) {
     console.error("Error:", error);

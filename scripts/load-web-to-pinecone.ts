@@ -22,8 +22,8 @@ async function loadWebToPinecone() {
       throw new Error('PINECONE_API_KEY no está configurada en .env');
     }
 
-    if (!process.env.OPENROUTER_API_KEY) {
-      throw new Error('OPENROUTER_API_KEY no está configurada en .env. Agrégala para generar embeddings.');
+    if (!process.env.OPENAI_KEY) {
+      throw new Error('OPENAI_KEY no está configurada en .env. Agrégala para generar embeddings.');
     }
 
     // Leer CSV
@@ -50,17 +50,11 @@ async function loadWebToPinecone() {
 
     const index = pinecone.Index(indexName);
 
-    // Configurar embeddings con OpenRouter usando gpt-oss-20b gratuito
+    // Configurar embeddings con OpenAI (512 dimensiones para coincidir con índice Pinecone)
     const embeddings = new OpenAIEmbeddings({
-      openAIApiKey: process.env.OPENROUTER_API_KEY!,
-      modelName: 'openai/gpt-oss-20b:free',
-      configuration: {
-        baseURL: 'https://openrouter.ai/api/v1',
-        defaultHeaders: {
-          'HTTP-Referer': 'http://localhost:3000',
-          'X-Title': 'Agave Atlas',
-        },
-      },
+      openAIApiKey: process.env.OPENAI_API_KEY!,
+      modelName: 'text-embedding-3-small',
+      dimensions: 512, // Coincidir con dimensión del índice Pinecone
     });
 
     // Text splitter
