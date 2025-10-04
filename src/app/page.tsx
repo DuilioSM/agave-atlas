@@ -10,6 +10,7 @@ import ReactMarkdown from "react-markdown";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  sources?: Array<{ title: string; link: string }>;
 }
 
 export default function Home() {
@@ -46,6 +47,7 @@ export default function Home() {
       const assistantMessage: Message = {
         role: "assistant",
         content: data.message,
+        sources: data.sources,
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
@@ -86,6 +88,25 @@ export default function Home() {
                 }`}
               >
                 <ReactMarkdown>{message.content}</ReactMarkdown>
+                {message.role === "assistant" && message.sources && message.sources.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-muted-foreground/20 text-xs text-muted-foreground">
+                    <p className="font-semibold mb-1">Fuentes:</p>
+                    <ul className="space-y-1">
+                      {message.sources.map((source, idx) => (
+                        <li key={idx}>
+                          <a
+                            href={source.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            {source.title}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </Card>
             </div>
           ))}

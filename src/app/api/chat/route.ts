@@ -72,12 +72,21 @@ Formatea toda tu respuesta como un blockquote de markdown. Cita los artículos c
       input: message,
     });
 
+    // Eliminar fuentes duplicadas basándose en el link
+    const uniqueSources = result.context?.reduce((acc: any[], doc: any) => {
+      const exists = acc.find(s => s.link === doc.metadata.source);
+      if (!exists) {
+        acc.push({
+          title: doc.metadata.title,
+          link: doc.metadata.source,
+        });
+      }
+      return acc;
+    }, []) || [];
+
     return Response.json({
       message: result.answer,
-      sources: result.context?.map((doc: any) => ({
-        title: doc.metadata.title,
-        link: doc.metadata.source,
-      })) || [],
+      sources: uniqueSources,
     });
   } catch (error) {
     console.error("Error:", error);
