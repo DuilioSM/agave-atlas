@@ -10,7 +10,7 @@ import ReactMarkdown from "react-markdown";
 interface Message {
   role: "user" | "assistant";
   content: string;
-  sources?: any[];
+  sources?: Array<{ title: string; link: string }>;
 }
 
 export default function Home() {
@@ -32,8 +32,7 @@ export default function Home() {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { role: "user", content: input };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
 
@@ -41,7 +40,7 @@ export default function Home() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ message: input }),
       });
 
       const data = await response.json();
@@ -88,19 +87,21 @@ export default function Home() {
                     : "bg-muted"
                 }`}
               >
-                                <ReactMarkdown>{message.content}</ReactMarkdown>
+                <ReactMarkdown>{message.content}</ReactMarkdown>
                 {message.role === "assistant" && message.sources && message.sources.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="font-semibold">Fuentes:</h4>
-                    <ul className="list-disc list-inside">
-                      {message.sources.map((source: any, index: number) => (
-                        <li key={index}>
-                          <a href={source.link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                  <div className="mt-3 pt-3 border-t border-muted-foreground/20 text-xs text-muted-foreground">
+                    <p className="font-semibold mb-1">Fuentes:</p>
+                    <ul className="space-y-1">
+                      {message.sources.map((source, idx) => (
+                        <li key={idx}>
+                          <a
+                            href={source.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
                             {source.title}
                           </a>
-                          {source.authors && source.authors.length > 0 && (
-                            <p className="text-sm text-gray-500">Autores: {source.authors.join(", ")}</p>
-                          )}
                         </li>
                       ))}
                     </ul>

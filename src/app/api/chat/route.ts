@@ -106,25 +106,23 @@ export async function POST(request: Request) {
     });
 
     // Ejecutar query
-    const result = await conversationalRetrievalChain.invoke({
-      chat_history: chat_history,
-      input: lastMessage.content,
+    const result = await retrievalChain.invoke({
+      input: message,
     });
 
-    const sources = result.context?.map((doc: any) => ({
-        title: doc.metadata.title,
-        link: doc.metadata.link,
-        authors: doc.metadata.authors || [],
-        authors: doc.metadata.authors || [],
-      })) || [];
+    // Eliminar fuentes duplicadas basándose en el link
+    const sources = result.context?.map((doc) => ({
+      title: doc.metadata.title as string,
+      link: doc.metadata.source as string,
+    })) || [];
 
-    let enhancedAnswer = result.answer;
-
-    enhancedAnswer += `\n\nHa sido un placer ayudarte con tu consulta. Si tienes más preguntas o necesitas más información, no dudes en preguntar. ¿Hay algo más en lo que pueda asistirte?`;
+    const uniqueSources = sources.filter((source, index, self) =>
+      index === self.findIndex((s) => s.link === source.link)
+    );
 
     return Response.json({
-      message: enhancedAnswer,
-      sources: sources,
+      message: result.answer,
+      sources: uniqueSources,
     });
   } catch (error) {
     console.error("Error:", error);
