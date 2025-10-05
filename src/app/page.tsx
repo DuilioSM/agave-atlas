@@ -18,7 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sidebar, SidebarRef } from "@/components/Sidebar";
 import ReactMarkdown from "react-markdown";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Send, Paperclip, Loader2 } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -323,19 +323,52 @@ export default function Home() {
           </div>
         </ScrollArea>
 
-        <div className="border-t p-4">
+        <div className="border-t p-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <form onSubmit={sendMessage} className="max-w-3xl mx-auto">
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={isLoadingConversation ? "Cargando conversación..." : "Escribe un mensaje..."}
-                disabled={isLoading || isLoadingConversation}
-                className="flex-1"
-              />
-              <Button type="submit" disabled={isLoading || isLoadingConversation || !input.trim()}>
-                Enviar
+            <div className="relative flex items-end gap-2">
+              {/* Textarea container with modern styling */}
+              <div className="relative flex-1 group">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/10 rounded-2xl opacity-0 group-focus-within:opacity-100 blur-xl transition-opacity duration-300" />
+                <div className="relative flex items-center bg-muted/50 border-2 border-border focus-within:border-primary/50 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md focus-within:shadow-md">
+                  {/* Input field */}
+                  <Input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder={isLoadingConversation ? "Cargando conversación..." : "Escribe tu mensaje aquí..."}
+                    disabled={isLoading || isLoadingConversation}
+                    className="flex-1 border-0 bg-transparent px-3 py-4 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm placeholder:text-muted-foreground/60"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (!isLoading && !isLoadingConversation && input.trim()) {
+                          sendMessage(e);
+                        }
+                      }
+                    }}
+                  />
+
+                  {/* Character count (optional) */}
+                  {input.length > 0 && (
+                    <span className="mr-2 text-xs text-muted-foreground/60 shrink-0">
+                      {input.length}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Send button with enhanced styling */}
+              <Button
+                type="submit"
+                disabled={isLoading || isLoadingConversation || !input.trim()}
+                size="icon"
+                className="h-12 w-12 shrink-0 rounded-2xl shadow-md transition-all duration-200 hover:shadow-lg hover:scale-105 disabled:scale-100 disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
               </Button>
             </div>
           </form>

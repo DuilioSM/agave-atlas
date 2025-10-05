@@ -12,8 +12,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { message, history = [] } = body;
 
-    console.log('📝 Historial de chat recibido:', JSON.stringify(history, null, 2));
-
     // Inicializar Pinecone
     const pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY!,
@@ -112,7 +110,7 @@ Tu misión es brindar información científica de manera amable y clara, guiando
 
 **Estructura de la Conversación:**
 Debes mantener la siguiente estructura en todas tus respuestas:
-1.  **Saludo breve y cálido.** (ej: "¡Hola!")
+1.  **Saludo breve y cálido.** (ej: "¡Hola, soy Stella !")
 2.  **Respuesta clara y ordenada** a la duda del usuario.
 3.  **Mención de la ubicación:** Indica en qué parte del artículo o del sitio puede encontrar más información (ej: “Puedes revisar más sobre esto en la sección Introducción del artículo”). Si el usuario no especifica, sugiere leer la sección *Introducción* para contextualizar.
 4.  **Invitación final:** Cierra con una invitación amable a visitar el link del artículo o a seguir preguntando. Incluye una de estas frases: "Puedes consultar el artículo completo y sus fuentes al final de la página 🔗" o "Encuentra más detalles en el enlace que aparece en el apartado de Fuentes 👇". Termina SIEMPRE con una pregunta o invitación a seguir explorando (ej: "¿Te gustaría que te indique dónde está la Introduución o los Resultados? 😊").
