@@ -65,33 +65,20 @@ export async function POST(request: Request) {
       temperature: 0.7,
     });
 
-    // History-aware retriever prompt
-    const historyAwarePrompt = ChatPromptTemplate.fromMessages([
-      new MessagesPlaceholder("chat_history"),
-      ["user", "{input}"],
-      [
-        "user",
-        "Given the above conversation, generate a search query to look up in order to get information relevant to the conversation",
-      ],
-    ]);
+    // Crear prompt template
+    const prompt = ChatPromptTemplate.fromTemplate(`
+Eres un asistente de investigación espacial y biología. Responde la pregunta del usuario de forma breve y concisa, basándote únicamente en el contexto proporcionado de artículos científicos. Si el usuario pregunta cuántos archivos hay en tu base de datos, responde de forma amigable que tienes acceso a una gran cantidad de información científica, pero no puedes dar un número exacto.
 
-    const historyAwareRetrieverChain = await createHistoryAwareRetriever({
-      llm,
-      retriever,
-      rephrasePrompt: historyAwarePrompt,
-    });
+Contexto de artículos científicos:
+{context}
 
-    // Prompt for the final response
-    const historyAwareRetrievalPrompt = ChatPromptTemplate.fromMessages([
-      [
-        "system",
-        "Eres un asistente de investigación espacial y biología. Responde a la consulta del usuario de forma breve y concisa, basándote únicamente en el contexto proporcionado de artículos científicos.\n\nContexto de artículos científicos:\n{context}\n\nFormatea toda tu respuesta como un blockquote de markdown. Cita los artículos cuando sea relevante (usando el título del artículo). Utiliza **markdown** para resaltar las palabras y conceptos clave en tu respuesta.",
-      ],
-      new MessagesPlaceholder("chat_history"),
-      ["user", "{input}"],
-    ]);
+Pregunta: {input}
 
-    const historyAwareCombineDocsChain = await createStuffDocumentsChain({
+Formatea toda tu respuesta como un blockquote de markdown. Cita los artículos cuando sea relevante (usando el título del artículo). Utiliza **markdown** para resaltar las palabras y conceptos clave en tu respuesta.
+`);
+
+    // Crear chain de documentos
+    const documentChain = await createStuffDocumentsChain({
       llm,
       prompt: historyAwareRetrievalPrompt,
     });
