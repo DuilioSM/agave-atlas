@@ -12,8 +12,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { message, history = [] } = body;
 
-    console.log('📝 Historial de chat recibido:', JSON.stringify(history, null, 2));
-
     // Inicializar Pinecone
     const pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY!,
