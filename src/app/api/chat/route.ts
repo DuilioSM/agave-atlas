@@ -235,7 +235,7 @@ export async function POST(request: Request) {
     </div>
 
     <div class="footer">
-      <strong>Agave Atlas</strong> • Generado automáticamente<br>
+      <strong>Stella Hub</strong> • Generado automáticamente<br>
       ${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
     </div>
   </div>

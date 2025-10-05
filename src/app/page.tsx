@@ -223,7 +223,10 @@ export default function Home() {
 
       <div className="flex flex-col flex-1">
         <header className="border-b px-4 py-3 flex justify-between items-center">
-          <h1 className="text-xl font-semibold">Agave Atlas</h1>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="Stella Hub" className="h-8 w-8" />
+            <h1 className="text-xl font-semibold">Stella Hub</h1>
+          </div>
           <div className="flex items-center gap-3">
             {/* Botón para mostrar/ocultar reporte */}
             {hasReport && (

@@ -9,7 +9,10 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold mb-2">Agave Atlas</h1>
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <img src="/logo.png" alt="Stella Hub" className="h-12 w-12" />
+            <h1 className="text-2xl font-bold">Stella Hub</h1>
+          </div>
           <p className="text-muted-foreground">
             Inicia sesión para acceder al chat de investigación
           </p>
