@@ -32,7 +32,8 @@ export default function Home() {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInput("");
     setIsLoading(true);
 
@@ -40,7 +41,7 @@ export default function Home() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ messages: newMessages }),
       });
 
       const data = await response.json();
