@@ -9,7 +9,9 @@ import { createRetrievalChain } from 'langchain/chains/retrieval';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { message } = body;
+    const { message, history = [] } = body;
+
+    console.log('📝 Historial de chat recibido:', JSON.stringify(history, null, 2));
 
     // Inicializar Pinecone
     const pinecone = new Pinecone({
@@ -43,14 +45,17 @@ export async function POST(request: Request) {
       temperature: 0.7,
     });
 
-    // Crear prompt template
+    // Crear prompt template con historial
     const prompt = ChatPromptTemplate.fromTemplate(`
 Eres un asistente de investigación espacial y biología. Responde la pregunta del usuario de forma breve y concisa, basándote únicamente en el contexto proporcionado de artículos científicos. Si el usuario pregunta cuántos archivos hay en tu base de datos, responde de forma amigable que tienes acceso a una gran cantidad de información científica, pero no puedes dar un número exacto.
 
 Contexto de artículos científicos:
 {context}
 
-Pregunta: {input}
+Historial de conversación:
+{chat_history}
+
+Pregunta actual: {input}
 
 Formatea toda tu respuesta como un blockquote de markdown. Cita los artículos cuando sea relevante (usando el título del artículo). Utiliza *markdown* para resaltar las palabras y conceptos clave en tu respuesta.
 `);
@@ -67,9 +72,17 @@ Formatea toda tu respuesta como un blockquote de markdown. Cita los artículos c
       retriever,
     });
 
+    // Formatear historial para el prompt
+    const chatHistory = history
+      .map((msg: { role: string; content: string }) =>
+        `${msg.role === 'user' ? 'Usuario' : 'Asistente'}: ${msg.content}`
+      )
+      .join('\n');
+
     // Ejecutar query
     const result = await retrievalChain.invoke({
       input: message,
+      chat_history: chatHistory,
     });
 
     // Eliminar fuentes duplicadas basándose en el link
