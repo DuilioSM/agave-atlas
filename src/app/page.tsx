@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
+import { LogOut } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -14,6 +17,8 @@ interface Message {
 }
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +27,12 @@ export default function Home() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
 
   useEffect(() => {
     scrollToBottom();
@@ -60,10 +71,39 @@ export default function Home() {
     }
   };
 
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-muted-foreground">Cargando...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
   return (
     <div className="flex flex-col h-screen bg-background">
-      <header className="border-b px-4 py-3">
-        <h1 className="text-xl font-semibold">Chat</h1>
+      <header className="border-b px-4 py-3 flex justify-between items-center">
+        <h1 className="text-xl font-semibold">Agave Atlas</h1>
+        <div className="flex items-center gap-3">
+          {session?.user && (
+            <>
+              <span className="text-sm text-muted-foreground">
+                {session.user.email}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Salir
+              </Button>
+            </>
+          )}
+        </div>
       </header>
 
       <ScrollArea className="flex-1 p-4">
