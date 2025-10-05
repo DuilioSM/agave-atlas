@@ -2,9 +2,10 @@ import { OpenAIEmbeddings } from '@langchain/openai';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { ChatOpenAI } from '@langchain/openai';
-import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
-import { createRetrievalChain } from 'langchain/chains/retrieval';
+import { createReactAgent } from '@langchain/langgraph/prebuilt';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { HumanMessage } from '@langchain/core/messages';
+import { z } from 'zod';
 
 export async function POST(request: Request) {
   try {
@@ -38,6 +39,35 @@ export async function POST(request: Request) {
       k: 4, // Número de documentos relevantes a recuperar
     });
 
+    // Variable para almacenar las fuentes recuperadas
+    let retrievedSources: Array<{ title: string; link: string }> = [];
+
+    // Crear herramienta de búsqueda personalizada
+    const searchTool = new DynamicStructuredTool({
+      name: 'search_scientific_articles',
+      description: 'Search the database of scientific articles about space research and biology. Use this tool ONLY when the user requests technical, scientific, or specific information about research, experiments, plants, space crops, etc. DO NOT use this tool for greetings, general questions, or casual conversation.',
+      schema: z.object({
+        query: z.string().describe('The search query for finding relevant scientific articles'),
+      }),
+      func: async ({ query }) => {
+        const docs = await retriever.invoke(query);
+
+        // Guardar las fuentes con metadata
+        retrievedSources = docs.map(doc => ({
+          title: doc.metadata.title || 'Sin título',
+          link: doc.metadata.link || doc.metadata.source || '#',
+        }));
+
+        // Eliminar duplicados
+        retrievedSources = retrievedSources.filter((source, index, self) =>
+          index === self.findIndex((s) => s.link === source.link)
+        );
+
+        // Retornar el contenido para que el LLM lo use
+        return docs.map(doc => doc.pageContent).join('\n\n');
+      },
+    });
+
     // Configurar LLM
     const llm = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_KEY!,
@@ -45,59 +75,41 @@ export async function POST(request: Request) {
       temperature: 0.7,
     });
 
-    // Crear prompt template con historial
-    const prompt = ChatPromptTemplate.fromTemplate(`
-Eres un asistente de investigación espacial y biología. Responde la pregunta del usuario de forma breve y concisa, basándote únicamente en el contexto proporcionado de artículos científicos. Si el usuario pregunta cuántos archivos hay en tu base de datos, responde de forma amigable que tienes acceso a una gran cantidad de información científica, pero no puedes dar un número exacto.
-
-Contexto de artículos científicos:
-{context}
-
-Historial de conversación:
-{chat_history}
-
-Pregunta actual: {input}
-
-Formatea toda tu respuesta como un blockquote de markdown. Cita los artículos cuando sea relevante (usando el título del artículo). Utiliza *markdown* para resaltar las palabras y conceptos clave en tu respuesta.
-`);
-
-    // Crear chain de documentos
-    const documentChain = await createStuffDocumentsChain({
+    // Crear agente con la herramienta
+    const agent = createReactAgent({
       llm,
-      prompt,
+      tools: [searchTool],
     });
 
-    // Crear retrieval chain
-    const retrievalChain = await createRetrievalChain({
-      combineDocsChain: documentChain,
-      retriever,
+    // Formatear historial
+    const formattedHistory = history.map((msg: { role: string; content: string }) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+
+    // Ejecutar agente
+    const result = await agent.invoke({
+      messages: [
+        {
+          role: 'system',
+          content: `Eres un asistente de investigación espacial y biología. Cuando respondas preguntas técnicas o científicas, usa la herramienta de búsqueda para obtener información de artículos científicos y cita las fuentes. Para saludos o conversación casual, responde de forma amigable sin usar herramientas. Formatea tus respuestas técnicas como blockquote de markdown y usa *markdown* para resaltar conceptos clave.`
+        },
+        ...formattedHistory,
+        new HumanMessage(message)
+      ],
     });
 
-    // Formatear historial para el prompt
-    const chatHistory = history
-      .map((msg: { role: string; content: string }) =>
-        `${msg.role === 'user' ? 'Usuario' : 'Asistente'}: ${msg.content}`
-      )
-      .join('\n');
+    // Extraer la respuesta final
+    const messages = result.messages;
+    const lastMessage = messages[messages.length - 1];
+    const answer = typeof lastMessage.content === 'string'
+      ? lastMessage.content
+      : JSON.stringify(lastMessage.content);
 
-    // Ejecutar query
-    const result = await retrievalChain.invoke({
-      input: message,
-      chat_history: chatHistory,
-    });
-
-    // Eliminar fuentes duplicadas basándose en el link
-    const sources = result.context?.map((doc) => ({
-      title: doc.metadata.title as string,
-      link: doc.metadata.source as string,
-    })) || [];
-
-    const uniqueSources = sources.filter((source, index, self) =>
-      index === self.findIndex((s) => s.link === source.link)
-    );
-
+    // Las fuentes ya están en retrievedSources gracias a nuestra herramienta personalizada
     return Response.json({
-      message: result.answer,
-      sources: uniqueSources,
+      message: answer,
+      sources: retrievedSources,
     });
   } catch (error) {
     console.error("Error:", error);
