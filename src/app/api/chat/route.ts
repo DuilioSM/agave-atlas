@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
     // Crear prompt template
     const prompt = ChatPromptTemplate.fromTemplate(`
-Eres un asistente de investigación espacial y biología. Responde la pregunta del usuario de forma breve y concisa, basándote únicamente en el contexto proporcionado de artículos científicos.
+Eres un asistente de investigación espacial y biología. Responde la pregunta del usuario de forma breve y concisa, basándote únicamente en el contexto proporcionado de artículos científicos. Si el usuario pregunta cuántos archivos hay en tu base de datos, responde de forma amigable que tienes acceso a una gran cantidad de información científica, pero no puedes dar un número exacto.
 
 Contexto de artículos científicos:
 {context}
