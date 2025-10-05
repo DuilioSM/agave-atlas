@@ -4,34 +4,12 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
-import { createRetrievalChain } from "langchain/chains/retrieval";
-import { createHistoryAwareRetriever } from "langchain/chains/history_aware_retriever";
-import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { MessagesPlaceholder } from "@langchain/core/prompts";
+import { createRetrievalChain } from 'langchain/chains/retrieval';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { messages } = body;
-
-    const lastMessage = messages[messages.length - 1];
-
-    const shortResponses: { [key: string]: string } = {
-      "ok": "¡De nada! Si tienes más preguntas, no dudes en consultarme.",
-      "si": "Perfecto. ¿En qué más puedo ayudarte?",
-      "no": "Entendido. Si cambias de opinión, aquí estaré para ayudarte.",
-      "gracias": "¡De nada! Ha sido un placer ayudarte. ¿Necesitas algo más?",
-      "de nada": "¡A ti! ¿Hay algo más en lo que pueda asistirte?",
-    };
-
-    const lowerCaseMessage = lastMessage.content.toLowerCase().trim();
-
-    if (shortResponses[lowerCaseMessage]) {
-      return Response.json({
-        message: shortResponses[lowerCaseMessage],
-        sources: [],
-      });
-    }
+    const { message } = body;
 
     // Inicializar Pinecone
     const pinecone = new Pinecone({
@@ -41,21 +19,21 @@ export async function POST(request: Request) {
     const indexName = process.env.PINECONE_INDEX || 'agave-atlas';
     const index = pinecone.Index(indexName);
 
-    // Configurar embeddings
+    // Configurar embeddings (mismo modelo y dimensión que usamos para indexar)
     const embeddings = new OpenAIEmbeddings({
       openAIApiKey: process.env.OPENAI_KEY!,
       modelName: 'text-embedding-3-small',
       dimensions: 512,
     });
 
-    // Crear vector store
+    // Crear vector store desde el índice existente
     const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
       pineconeIndex: index,
     });
 
     // Crear retriever
     const retriever = vectorStore.asRetriever({
-      k: 4,
+      k: 4, // Número de documentos relevantes a recuperar
     });
 
     // Configurar LLM
@@ -74,22 +52,19 @@ Contexto de artículos científicos:
 
 Pregunta: {input}
 
-Formatea toda tu respuesta como un blockquote de markdown. Cita los artículos cuando sea relevante (usando el título del artículo). Utiliza **markdown** para resaltar las palabras y conceptos clave en tu respuesta.
+Formatea toda tu respuesta como un blockquote de markdown. Cita los artículos cuando sea relevante (usando el título del artículo). Utiliza *markdown* para resaltar las palabras y conceptos clave en tu respuesta.
 `);
 
     // Crear chain de documentos
     const documentChain = await createStuffDocumentsChain({
       llm,
-      prompt: historyAwareRetrievalPrompt,
+      prompt,
     });
 
-    const conversationalRetrievalChain = await createRetrievalChain({
-      retriever: historyAwareRetrieverChain,
-      combineDocsChain: historyAwareCombineDocsChain,
-    });
-
-    const chat_history = messages.slice(0, -1).map((m: any) => {
-        return m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content);
+    // Crear retrieval chain
+    const retrievalChain = await createRetrievalChain({
+      combineDocsChain: documentChain,
+      retriever,
     });
 
     // Ejecutar query
