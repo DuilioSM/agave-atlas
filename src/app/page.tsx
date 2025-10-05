@@ -62,8 +62,8 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json();
         setMessages(
-          data.messages.map((msg: any) => ({
-            role: msg.role,
+          data.messages.map((msg: { role: string; content: string; sources?: Array<{ title: string; link: string }> }) => ({
+            role: msg.role as "user" | "assistant",
             content: msg.content,
             sources: msg.sources,
           }))
@@ -104,7 +104,7 @@ export default function Home() {
     }
   };
 
-  const saveMessage = async (role: string, content: string, sources?: any) => {
+  const saveMessage = async (role: string, content: string, sources?: Array<{ title: string; link: string }>) => {
     if (!currentConversationId) {
       console.error("No hay conversación activa");
       return;
