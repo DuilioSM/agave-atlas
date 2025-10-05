@@ -44,12 +44,44 @@ export async function POST(request: Request) {
 
     // Función para generar HTML report
     const generateHtmlReport = (summary: string, sources: Array<{ title: string; link: string }>) => {
+      // Función auxiliar para generar citación APA
+      const generateAPACitation = (title: string, link: string) => {
+        const currentYear = new Date().getFullYear();
+        const retrievedDate = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        // Extraer dominio para el autor
+        let domain = 'Autor desconocido';
+        try {
+          const url = new URL(link);
+          domain = url.hostname.replace('www.', '');
+        } catch {
+          // Si falla, usar dominio genérico
+        }
+
+        return `${domain}. (${currentYear}). <em>${title}</em>. Recuperado el ${retrievedDate}, de ${link}`;
+      };
+
       const sourcesHtml = sources.map((source, index) => `
         <div class="source-item">
           <div class="source-number">${index + 1}</div>
           <div class="source-content">
             <h4 class="source-title">${source.title}</h4>
             <a href="${source.link}" target="_blank" class="source-link">${source.link}</a>
+            <div class="source-citation">
+              <button class="citation-toggle" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                  <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                </svg>
+                Citar en formato APA
+              </button>
+              <div class="citation-box hidden">
+                <p class="citation-text">${generateAPACitation(source.title, source.link)}</p>
+                <button class="copy-citation" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.citation-text').innerText).then(() => { this.textContent = '✓ Copiado'; setTimeout(() => this.textContent = 'Copiar', 2000); })">
+                  Copiar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       `).join('');
@@ -176,6 +208,62 @@ export async function POST(request: Request) {
     .source-link:hover {
       text-decoration: underline;
       color: #764ba2;
+    }
+    .source-citation {
+      margin-top: 12px;
+    }
+    .citation-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .citation-toggle:hover {
+      background: #5568d3;
+      transform: translateY(-1px);
+    }
+    .citation-toggle svg {
+      flex-shrink: 0;
+    }
+    .citation-box {
+      margin-top: 8px;
+      background: white;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .citation-box.hidden {
+      display: none;
+    }
+    .citation-text {
+      font-size: 13px;
+      color: #2d3748;
+      line-height: 1.6;
+      margin-bottom: 10px;
+      font-family: 'Georgia', serif;
+    }
+    .copy-citation {
+      background: #edf2f7;
+      color: #667eea;
+      border: 1px solid #667eea;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+    .copy-citation:hover {
+      background: #667eea;
+      color: white;
     }
     .footer {
       background: #f7fafc;
