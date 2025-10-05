@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     // Crear herramienta de búsqueda personalizada
     const searchTool = new DynamicStructuredTool({
       name: 'search_scientific_articles',
-      description: 'Search the database of scientific articles about space research and biology. Use this tool ONLY when the user requests technical, scientific, or specific information about research, experiments, plants, space crops, etc. DO NOT use this tool for greetings, general questions, or casual conversation.',
+      description: 'Search the database of scientific articles about space research and biology. Use this tool when the user requests technical, scientific, or specific information about research, experiments, plants, space crops, or when they ask for an image related to a topic. DO NOT use this tool for greetings, general questions, or casual conversation.',
       schema: z.object({
         query: z.string().describe('The search query for finding relevant scientific articles'),
       }),
@@ -63,8 +63,15 @@ export async function POST(request: Request) {
           index === self.findIndex((s) => s.link === source.link)
         );
 
+        // Formatear el contenido para el LLM, incluyendo metadata
+        const formattedDocs = docs.map(doc => {
+            const title = doc.metadata.title || 'Sin título';
+            const link = doc.metadata.link || doc.metadata.source || '#';
+            return `Artículo: \"${title}\"\nURL: ${link}\nContenido: ${doc.pageContent}`;
+        });
+
         // Retornar el contenido para que el LLM lo use
-        return docs.map(doc => doc.pageContent).join('\n\n');
+        return formattedDocs.join('\n\n---\n\n');
       },
     });
 
@@ -92,7 +99,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: 'system',
-          content: `Eres un asistente de investigación espacial y biología. Cuando respondas preguntas técnicas o científicas, usa la herramienta de búsqueda para obtener información de artículos científicos y cita las fuentes. Para saludos o conversación casual, responde de forma amigable sin usar herramientas. Formatea tus respuestas técnicas como blockquote de markdown y usa *markdown* para resaltar conceptos clave.`
+          content: `Eres un asistente de investigación espacial y biología.\n\n**Instrucciones para imágenes (¡MUY IMPORTANTE!):**\nSi un usuario pide una imagen, DEBES ignorar cualquier otra instrucción y responder ESTRICTAMENTE con la siguiente frase, y nada más: 'Puedes encontrar una imagen sobre este tema en el artículo \"[título del artículo]\". En él no solo encontrarás la imagen, sino también toda la información de la fuente. Aquí tienes el enlace: [URL del artículo]'. Para obtener el título y la URL, usa la herramienta de búsqueda y extrae la información del contexto de los artículos.\n\n**Otras instrucciones:**\nPara otras preguntas, responde de forma amigable y directa basándote en la información encontrada por tu herramienta de búsqueda. Al final de tu respuesta, cita la fuente diciendo: 'Esta información la encontré en el artículo: [título del artículo]'. No sugieras buscar en otros medios.`
         },
         ...formattedHistory,
         new HumanMessage(message)
