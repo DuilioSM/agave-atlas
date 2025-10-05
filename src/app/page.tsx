@@ -18,7 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sidebar, SidebarRef } from "@/components/Sidebar";
 import ReactMarkdown from "react-markdown";
-import { LogOut, User, Send, Paperclip, Loader2 } from "lucide-react";
+import { LogOut, User, Send, Loader2, FileText, X } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -34,6 +34,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>();
+  const [showReport, setShowReport] = useState(false);
+  const [hasReport, setHasReport] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<SidebarRef>(null);
 
@@ -55,6 +57,15 @@ export default function Home() {
     scrollToBottom();
   }, [messages]);
 
+  const checkForReport = async (conversationId: string) => {
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/report`);
+      setHasReport(response.ok);
+    } catch (error) {
+      setHasReport(false);
+    }
+  };
+
   const loadConversation = async (conversationId: string) => {
     setIsLoadingConversation(true);
     try {
@@ -69,6 +80,8 @@ export default function Home() {
           }))
         );
         setCurrentConversationId(conversationId);
+        // Verificar si hay reporte disponible
+        await checkForReport(conversationId);
       }
     } catch (error) {
       console.error("Error loading conversation:", error);
@@ -93,6 +106,8 @@ export default function Home() {
         const conversation = await response.json();
         setCurrentConversationId(conversation.id);
         setMessages([]);
+        setHasReport(false);
+        setShowReport(false);
 
         // Refrescar la lista de conversaciones
         sidebarRef.current?.refreshConversations();
@@ -158,6 +173,7 @@ export default function Home() {
             role: msg.role,
             content: msg.content,
           })),
+          conversationId: currentConversationId,
         }),
       });
 
@@ -171,6 +187,11 @@ export default function Home() {
 
       // Guardar mensaje del asistente
       await saveMessage("assistant", data.message, data.sources);
+
+      // Verificar si se generó un reporte nuevo
+      if (currentConversationId) {
+        await checkForReport(currentConversationId);
+      }
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -204,6 +225,20 @@ export default function Home() {
         <header className="border-b px-4 py-3 flex justify-between items-center">
           <h1 className="text-xl font-semibold">Agave Atlas</h1>
           <div className="flex items-center gap-3">
+            {/* Botón para mostrar/ocultar reporte */}
+            {hasReport && (
+              <Button
+                variant={showReport ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowReport(!showReport)}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">
+                  {showReport ? "Ocultar" : "Ver"} Resumen
+                </span>
+              </Button>
+            )}
             {session?.user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -246,7 +281,10 @@ export default function Home() {
           </div>
         </header>
 
-        <ScrollArea className="flex-1 p-4">
+        <div className="flex flex-1 overflow-hidden">
+          {/* Panel de chat */}
+          <div className={`flex flex-col flex-1 transition-all duration-300 ${showReport ? 'mr-0 md:mr-2' : ''}`}>
+            <ScrollArea className="flex-1 p-4">
           <div className="max-w-3xl mx-auto space-y-4">
             {isLoadingConversation ? (
               <div className="flex items-center justify-center h-[60vh]">
@@ -372,6 +410,50 @@ export default function Home() {
               </Button>
             </div>
           </form>
+        </div>
+          </div>
+
+          {/* Panel del reporte HTML - Desktop */}
+          {showReport && currentConversationId && (
+            <div className="hidden md:flex md:w-1/2 lg:w-2/5 border-l bg-muted/20 relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 z-10 bg-background/80 backdrop-blur"
+                onClick={() => setShowReport(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <iframe
+                src={`/api/conversations/${currentConversationId}/report`}
+                className="w-full h-full border-0"
+                title="Resumen de Investigación"
+              />
+            </div>
+          )}
+
+          {/* Panel del reporte HTML - Mobile (modal estilo) */}
+          {showReport && currentConversationId && (
+            <div className="md:hidden fixed inset-0 z-50 bg-background">
+              <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between border-b px-4 py-3">
+                  <h2 className="text-lg font-semibold">Resumen de Investigación</h2>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowReport(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <iframe
+                  src={`/api/conversations/${currentConversationId}/report`}
+                  className="flex-1 border-0"
+                  title="Resumen de Investigación"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

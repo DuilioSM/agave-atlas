@@ -4,7 +4,7 @@ import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, MessageSquarePlus, Trash2, Clock } from "lucide-react";
+import { Menu, MessageSquarePlus, Trash2, Clock, PanelLeftClose, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Conversation {
@@ -32,6 +32,7 @@ export const Sidebar = forwardRef<SidebarRef, SidebarProps>(({
 }, ref) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const loadConversations = async () => {
     try {
@@ -98,16 +99,28 @@ export const Sidebar = forwardRef<SidebarRef, SidebarProps>(({
     return date.toLocaleDateString();
   };
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ showCollapseButton = false }: { showCollapseButton?: boolean }) => (
     <div className="flex flex-col h-full">
       {/* Header with gradient */}
       <div className="sticky top-0 z-10 backdrop-blur-lg bg-background/80 border-b">
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Conversaciones</h2>
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-              {conversations.length}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                {conversations.length}
+              </span>
+              {showCollapseButton && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setIsCollapsed(true)}
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
           <Button
             onClick={handleNewConversation}
@@ -200,14 +213,31 @@ export const Sidebar = forwardRef<SidebarRef, SidebarProps>(({
           <SheetHeader className="sr-only">
             <SheetTitle>Conversaciones</SheetTitle>
           </SheetHeader>
-          <SidebarContent />
+          <SidebarContent showCollapseButton={false} />
         </SheetContent>
       </Sheet>
 
       {/* Desktop sidebar */}
-      <div className="hidden md:flex md:w-64 md:flex-col md:border-r md:bg-muted/40">
-        <SidebarContent />
+      <div
+        className={cn(
+          "hidden md:flex md:flex-col md:border-r md:bg-muted/40 transition-all duration-300",
+          isCollapsed ? "md:w-0 md:overflow-hidden" : "md:w-64"
+        )}
+      >
+        <SidebarContent showCollapseButton={true} />
       </div>
+
+      {/* Botón para expandir sidebar cuando está colapsado - Desktop */}
+      {isCollapsed && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hidden md:flex absolute left-2 top-20 z-10 bg-background shadow-md hover:shadow-lg rounded-r-lg rounded-l-none border border-l-0"
+          onClick={() => setIsCollapsed(false)}
+        >
+          <PanelLeft className="h-5 w-5" />
+        </Button>
+      )}
     </>
   );
 });

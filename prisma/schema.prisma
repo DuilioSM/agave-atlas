@@ -62,13 +62,14 @@ model VerificationToken {
 }
 
 model Conversation {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title     String    @db.VarChar(255)
-  userId    String    @map("user_id") @db.Uuid
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages  Message[]
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title      String    @db.VarChar(255)
+  userId     String    @map("user_id") @db.Uuid
+  htmlReport String?   @map("html_report") @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages   Message[]
 
   @@index([userId])
   @@map("conversations")
