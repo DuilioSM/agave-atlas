@@ -40,13 +40,14 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String?   @db.VarChar(255)
-  email         String?   @unique(map: "users_email_idx") @db.VarChar(255)
-  emailVerified DateTime? @map("email_verified") @db.Timestamptz(6)
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String?        @db.VarChar(255)
+  email         String?        @unique(map: "users_email_idx") @db.VarChar(255)
+  emailVerified DateTime?      @map("email_verified") @db.Timestamptz(6)
   image         String?
   accounts      Account[]
   sessions      Session[]
+  conversations Conversation[]
 
   @@map("users")
 }
@@ -58,4 +59,30 @@ model VerificationToken {
 
   @@id([identifier, token])
   @@map("verification_tokens")
+}
+
+model Conversation {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title     String    @db.VarChar(255)
+  userId    String    @map("user_id") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@index([userId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  role           String       @db.VarChar(50) // 'user' or 'assistant'
+  content        String       @db.Text
+  sources        Json?        // JSON array de fuentes
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("messages")
 }
