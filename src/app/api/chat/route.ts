@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     // Variables para almacenar las fuentes recuperadas
     let retrievedSources: Array<{ title: string; link: string }> = [];
-    let allSearchQueries: string[] = [];
+    const allSearchQueries: string[] = [];
 
     // Función para generar HTML report
     const generateHtmlReport = (summary: string, sources: Array<{ title: string; link: string }>) => {

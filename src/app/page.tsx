@@ -61,7 +61,7 @@ export default function Home() {
     try {
       const response = await fetch(`/api/conversations/${conversationId}/report`);
       setHasReport(response.ok);
-    } catch (error) {
+    } catch {
       setHasReport(false);
     }
   };
