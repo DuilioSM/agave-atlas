@@ -43,12 +43,47 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const loadOrCreateConversation = async () => {
+    try {
+      // Primero intentar obtener la última conversación
+      const response = await fetch("/api/conversations");
+      if (response.ok) {
+        const conversations = await response.json();
+
+        if (conversations.length > 0) {
+          // Obtener la conversación más reciente
+          const lastConversation = conversations[0];
+
+          // Verificar si tiene mensajes
+          const detailResponse = await fetch(`/api/conversations/${lastConversation.id}`);
+          if (detailResponse.ok) {
+            const detail = await detailResponse.json();
+
+            if (detail.messages && detail.messages.length === 0) {
+              // La última conversación está vacía, usarla
+              setCurrentConversationId(lastConversation.id);
+              setMessages([]);
+              return;
+            }
+          }
+        }
+      }
+
+      // Si no hay conversaciones o la última tiene mensajes, crear una nueva
+      await handleNewConversation();
+    } catch (error) {
+      console.error("Error loading or creating conversation:", error);
+      // En caso de error, crear una nueva conversación
+      await handleNewConversation();
+    }
+  };
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     } else if (status === "authenticated" && !currentConversationId) {
-      // Crear una conversación inicial cuando el usuario entra por primera vez
-      handleNewConversation();
+      // Cargar o crear una conversación inicial
+      loadOrCreateConversation();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, router]);
@@ -284,9 +319,9 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
           {/* Panel de chat */}
-          <div className={`flex flex-col flex-1 transition-all duration-300 ${showReport ? 'mr-0 md:mr-2' : ''}`}>
+          <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300`}>
             <ScrollArea className="flex-1 p-4">
           <div className="max-w-3xl mx-auto space-y-4">
             {isLoadingConversation ? (
@@ -418,26 +453,31 @@ export default function Home() {
 
           {/* Panel del reporte HTML - Desktop */}
           {showReport && currentConversationId && (
-            <div className="hidden md:flex md:w-1/2 lg:w-2/5 border-l bg-muted/20 relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 z-10 bg-background/80 backdrop-blur"
-                onClick={() => setShowReport(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-              <iframe
-                src={`/api/conversations/${currentConversationId}/report`}
-                className="w-full h-full border-0"
-                title="Resumen de Investigación"
-              />
+            <div className="hidden lg:flex lg:flex-col lg:w-[450px] xl:w-[500px] border-l bg-muted/20 flex-shrink-0 overflow-hidden">
+              <div className="flex items-center justify-between border-b px-4 py-3 bg-background/80 backdrop-blur">
+                <h2 className="text-sm font-semibold">Resumen de Investigación</h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setShowReport(false)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto">
+                <iframe
+                  src={`/api/conversations/${currentConversationId}/report`}
+                  className="w-full h-full border-0"
+                  title="Resumen de Investigación"
+                />
+              </div>
             </div>
           )}
 
-          {/* Panel del reporte HTML - Mobile (modal estilo) */}
+          {/* Panel del reporte HTML - Mobile/Tablet (modal estilo) */}
           {showReport && currentConversationId && (
-            <div className="md:hidden fixed inset-0 z-50 bg-background">
+            <div className="lg:hidden fixed inset-0 z-50 bg-background">
               <div className="flex flex-col h-full">
                 <div className="flex items-center justify-between border-b px-4 py-3">
                   <h2 className="text-lg font-semibold">Resumen de Investigación</h2>
