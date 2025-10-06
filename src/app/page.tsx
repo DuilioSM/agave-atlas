@@ -321,9 +321,9 @@ export default function Home() {
 
         <div className="flex flex-1 overflow-hidden relative">
           {/* Panel de chat */}
-          <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300`}>
-            <ScrollArea className="flex-1 p-4">
-          <div className="max-w-3xl mx-auto space-y-4">
+          <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300 overflow-hidden`}>
+            <ScrollArea className="flex-1 h-0">
+          <div className="max-w-3xl mx-auto space-y-4 p-4">
             {isLoadingConversation ? (
               <div className="flex items-center justify-center h-[60vh]">
                 <div className="flex flex-col items-center gap-3">
