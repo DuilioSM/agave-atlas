@@ -18,7 +18,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sidebar, SidebarRef } from "@/components/Sidebar";
 import ReactMarkdown from "react-markdown";
-import { LogOut, User, Send, Loader2, FileText, X } from "lucide-react";
+import { LogOut, User, Send, Loader2, FileText, X, Languages } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Message {
   role: "user" | "assistant";
@@ -29,6 +30,7 @@ interface Message {
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { language, setLanguage, t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -273,10 +275,41 @@ export default function Home() {
               >
                 <FileText className="h-4 w-4" />
                 <span className="hidden sm:inline">
-                  {showReport ? "Ocultar" : "Ver"} Resumen
+                  {showReport ? t("header.hideReport") : t("header.showReport")}
                 </span>
               </Button>
             )}
+
+            {/* Selector de idioma */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Languages className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    {language === "es" ? "ES" : "EN"}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => setLanguage("es")}
+                >
+                  <span className={language === "es" ? "font-semibold" : ""}>
+                    {t("language.spanish")}
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => setLanguage("en")}
+                >
+                  <span className={language === "en" ? "font-semibold" : ""}>
+                    {t("language.english")}
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {session?.user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -311,7 +344,7 @@ export default function Home() {
                     onClick={() => signOut({ callbackUrl: "/login" })}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Cerrar sesión</span>
+                    <span>{t("header.logout")}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -331,13 +364,13 @@ export default function Home() {
                     <div className="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
                     <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                   </div>
-                  <p className="text-sm text-muted-foreground">Cargando conversación...</p>
+                  <p className="text-sm text-muted-foreground">{t("messages.loading")}</p>
                 </div>
               </div>
             ) : messages.length === 0 ? (
               <div className="flex items-center justify-center h-[60vh]">
                 <p className="text-muted-foreground">
-                  Envía un mensaje para comenzar
+                  {t("messages.startConversation")}
                 </p>
               </div>
             ) : null}
@@ -362,7 +395,7 @@ export default function Home() {
                     message.sources &&
                     message.sources.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-muted-foreground/20 text-xs text-muted-foreground">
-                        <p className="font-semibold mb-1">Fuentes:</p>
+                        <p className="font-semibold mb-1">{t("messages.sources")}</p>
                         <ul className="space-y-1">
                           {message.sources.map((source, idx) => (
                             <li key={idx}>
@@ -411,7 +444,7 @@ export default function Home() {
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder={isLoadingConversation ? "Cargando conversación..." : "Escribe tu mensaje aquí..."}
+                    placeholder={isLoadingConversation ? t("messages.placeholderLoading") : t("messages.placeholder")}
                     disabled={isLoading || isLoadingConversation}
                     className="flex-1 border-0 bg-transparent px-3 py-4 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm placeholder:text-muted-foreground/60"
                     onKeyDown={(e) => {
@@ -455,7 +488,7 @@ export default function Home() {
           {showReport && currentConversationId && (
             <div className="hidden lg:flex lg:flex-col lg:w-[450px] xl:w-[500px] border-l bg-muted/20 flex-shrink-0 overflow-hidden">
               <div className="flex items-center justify-between border-b px-4 py-3 bg-background/80 backdrop-blur">
-                <h2 className="text-sm font-semibold">Resumen de Investigación</h2>
+                <h2 className="text-sm font-semibold">{t("report.title")}</h2>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -469,7 +502,7 @@ export default function Home() {
                 <iframe
                   src={`/api/conversations/${currentConversationId}/report`}
                   className="w-full h-full border-0"
-                  title="Resumen de Investigación"
+                  title={t("report.title")}
                 />
               </div>
             </div>
@@ -480,7 +513,7 @@ export default function Home() {
             <div className="lg:hidden fixed inset-0 z-50 bg-background">
               <div className="flex flex-col h-full">
                 <div className="flex items-center justify-between border-b px-4 py-3">
-                  <h2 className="text-lg font-semibold">Resumen de Investigación</h2>
+                  <h2 className="text-lg font-semibold">{t("report.title")}</h2>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -492,7 +525,7 @@ export default function Home() {
                 <iframe
                   src={`/api/conversations/${currentConversationId}/report`}
                   className="flex-1 border-0"
-                  title="Resumen de Investigación"
+                  title={t("report.title")}
                 />
               </div>
             </div>

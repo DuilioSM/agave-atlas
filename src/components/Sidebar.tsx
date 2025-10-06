@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, MessageSquarePlus, Trash2, Clock, PanelLeftClose, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Conversation {
   id: string;
@@ -30,6 +31,7 @@ export const Sidebar = forwardRef<SidebarRef, SidebarProps>(({
   onNewConversation,
   isLoadingConversation = false,
 }, ref) => {
+  const { t } = useLanguage();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -67,7 +69,7 @@ export const Sidebar = forwardRef<SidebarRef, SidebarProps>(({
   const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (!confirm("¿Estás seguro de eliminar esta conversación?")) {
+    if (!confirm(t("sidebar.deleteConfirm"))) {
       return;
     }
 
@@ -92,10 +94,10 @@ export const Sidebar = forwardRef<SidebarRef, SidebarProps>(({
     const now = new Date();
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
 
-    if (diffInHours < 1) return "Hace unos minutos";
-    if (diffInHours < 24) return `Hace ${diffInHours}h`;
-    if (diffInHours < 48) return "Ayer";
-    if (diffInHours < 168) return `Hace ${Math.floor(diffInHours / 24)}d`;
+    if (diffInHours < 1) return t("sidebar.timeMinutes");
+    if (diffInHours < 24) return t("sidebar.timeHours", { hours: diffInHours });
+    if (diffInHours < 48) return t("sidebar.timeYesterday");
+    if (diffInHours < 168) return t("sidebar.timeDays", { days: Math.floor(diffInHours / 24) });
     return date.toLocaleDateString();
   };
 
@@ -105,7 +107,7 @@ export const Sidebar = forwardRef<SidebarRef, SidebarProps>(({
       <div className="sticky top-0 z-10 backdrop-blur-lg bg-background/80 border-b">
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Conversaciones</h2>
+            <h2 className="text-lg font-semibold">{t("sidebar.title")}</h2>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
                 {conversations.length}
@@ -131,12 +133,12 @@ export const Sidebar = forwardRef<SidebarRef, SidebarProps>(({
             {isLoadingConversation ? (
               <>
                 <div className="w-4 h-4 mr-2 border-2 border-background border-t-transparent rounded-full animate-spin"></div>
-                Creando...
+                {t("sidebar.creating")}
               </>
             ) : (
               <>
                 <MessageSquarePlus className="w-4 h-4 mr-2" />
-                Nueva conversación
+                {t("sidebar.newConversation")}
               </>
             )}
           </Button>
@@ -148,7 +150,7 @@ export const Sidebar = forwardRef<SidebarRef, SidebarProps>(({
         {conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
             <MessageSquarePlus className="w-8 h-8 mb-2 opacity-50" />
-            <p className="text-sm">No hay conversaciones</p>
+            <p className="text-sm">{t("sidebar.noConversations")}</p>
           </div>
         ) : (
           <div className="space-y-1">
@@ -211,7 +213,7 @@ export const Sidebar = forwardRef<SidebarRef, SidebarProps>(({
           className="w-80 p-0 border-r-2"
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Conversaciones</SheetTitle>
+            <SheetTitle>{t("sidebar.title")}</SheetTitle>
           </SheetHeader>
           <SidebarContent showCollapseButton={false} />
         </SheetContent>
